@@ -28,4 +28,7 @@ public class CodePushConstants {
     public static final String UNZIPPED_FOLDER_NAME = "unzipped";
     public static final String CODE_PUSH_APK_BUILD_TIME_KEY = "CODE_PUSH_APK_BUILD_TIME";
     public static final String BUNDLE_JWT_FILE = ".codepushrelease";
+    public static final String RELATIVE_BINARY_PATH_KEY = "binaryPath";
+    public static final String UPDATE_TYPE_KEY = "updateType";
+
 }

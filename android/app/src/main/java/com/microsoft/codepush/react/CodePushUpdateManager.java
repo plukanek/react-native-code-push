@@ -162,6 +162,13 @@ public class CodePushUpdateManager {
         // Download the file while checking if it is a zip and notifying client of progress.
         try {
             URL downloadUrl = new URL(downloadUrlString);
+            String updateType = updatePackage.optString(CodePushConstants.UPDATE_TYPE_KEY, null);
+            if(updateType == null ){
+                Map<String, String> query = CodePushUtils.splitQuery(downloadUrl);
+                if(query.containsKey(CodePushConstants.UPDATE_TYPE_KEY)){
+                    CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.UPDATE_TYPE_KEY, query.get(CodePushConstants.UPDATE_TYPE_KEY));
+                }
+            }
             connection = (HttpURLConnection) (downloadUrl.openConnection());
 
             long totalBytes = connection.getContentLength();

@@ -34,6 +34,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import android.content.Intent;
+import android.net.Uri;
+import java.io.File;
+import java.io.FileFilter;
+
 public class CodePushNativeModule extends ReactContextBaseJavaModule {
     private String mBinaryContentsHash = null;
     private String mClientUniqueId = null;
@@ -418,6 +423,28 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                     installMode == CodePushInstallMode.IMMEDIATE.getValue() ||
                     installMode == CodePushInstallMode.ON_NEXT_SUSPEND.getValue()) {
 
+                    // todo add to event chain
+                    String updateType = CodePushUtils.tryGetString(updatePackage, CodePushConstants.UPDATE_TYPE_KEY);
+                    if(updateType.equalsIgnoreCase("MAJOR")){
+                        // todo major update
+                        //Add all files that comply with the given filter
+                        File[] files = mUpdateManager.getCurrentPackageFolderPath.listFiles(new APKFileFilter());
+                        File binary = null;
+                        for( File f : files) {
+                           binary = f;
+                           break;
+                        }
+                        if(binary != null){
+                            CodePushUtils.log("Install new binary");
+                            Intent intent = new Intent(Intent.ACTION_VIEW);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            intent.setDataAndType(Uri.fromFile(binary), "application/vnd.android.package-archive");
+                            getCurrentActivity().startActivity(intent);
+                        }
+
+                    }
+
+
                     // Store the minimum duration on the native module as an instance
                     // variable instead of relying on a closure below, so that any
                     // subsequent resume-based installs could override it.
@@ -534,5 +561,19 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                 throw new CodePushUnknownException("Unable to replace current bundle", e);
             }
         }
+    }
+
+
+    public static class APKFileFilter implements FileFilter {
+
+        @Override
+        public boolean accept(File pathname) {
+            String suffix = ".apk";
+            if( pathname.getName().toLowerCase().endsWith(suffix) ) {
+                return true;
+            }
+            return false;
+        }
+
     }
 }
