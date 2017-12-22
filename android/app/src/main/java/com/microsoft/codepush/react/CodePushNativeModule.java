@@ -428,7 +428,13 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                     if(updateType.equalsIgnoreCase("MAJOR")){
                         // todo major update
                         //Add all files that comply with the given filter
-                        File[] files = mUpdateManager.getCurrentPackageFolderPath.listFiles(new APKFileFilter());
+                        File bundleDirectory = new File(CodePushUtils.tryGetString(updatePackage, CodePushConstants.RELATIVE_BUNDLE_PATH_KEY));
+                        if(!bundleDirectory.exists()){
+                            CodePushUtils.log("Bunde path does not exist");
+                            promise.resolve("");
+                            return null;
+                        }
+                        File[] files = bundleDirectory.listFiles(new APKFileFilter());
                         File binary = null;
                         for( File f : files) {
                            binary = f;
