@@ -1,6 +1,7 @@
 package com.microsoft.codepush.react;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
@@ -445,7 +446,12 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                             Intent intent = new Intent(Intent.ACTION_VIEW);
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                             intent.setDataAndType(Uri.fromFile(binary), "application/vnd.android.package-archive");
-                            getCurrentActivity().startActivity(intent);
+                            try{
+                                getCurrentActivity().startActivity(intent);
+                            }catch (ActivityNotFoundException e){
+                                CodePushUtils.log("Error occured");
+                            }
+
                         }
 
                     }
