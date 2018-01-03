@@ -448,7 +448,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                             intent.setDataAndType(Uri.fromFile(binary), "application/vnd.android.package-archive");
                             try{
                                 getCurrentActivity().startActivity(intent);
-                            }catch (ActivityNotFoundException e){
+                            }catch (Exception e){
                                 CodePushUtils.log("Error occured");
                             }
 

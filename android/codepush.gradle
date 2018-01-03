@@ -5,6 +5,12 @@ import java.nio.file.Paths;
 def config = project.hasProperty("react") ? project.react : [];
 def bundleAssetName = config.bundleAssetName ?: "index.android.bundle"
 
+task getBuildDir {
+    doLast {
+        println project.buildDir
+    }
+}
+
 def elvisFile(thing) {
     return thing ? file(thing) : null;
 }
