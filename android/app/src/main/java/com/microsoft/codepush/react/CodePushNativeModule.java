@@ -519,27 +519,22 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                         return;
                     }
                     if(binary instanceof  File && binary.exists()){
-                        try {
-                            new JarFile(binary);
-                        } catch (Exception ex) {
-                            CodePushUtils.log("Binary is corrupted!");
-                            throw new CodePushUnknownException("Binary is corrupted.");
-                        }
-                        File local = Environment.getDataDirectory();
-                        local.mkdirs();
 
-                        FileUtils.moveFile(binary , local.getAbsolutePath() , binary.getName());
-                        File copiedBinary = new File(local , binary.getName());
-                        copiedBinary.setReadable(true, false);
-                        copiedBinary.setExecutable(true, false);
-                        copiedBinary.setWritable(true, false);
-                        CodePushUtils.log("Install new binary");
-                        // delete package info
-                        mUpdateManager.updateCurrentPackageInfo(new JSONObject());
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
-                        try{
+                      try{
+                          new JarFile(binary);
+                          File local = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                          File copiedBinary = new File(local , binary.getName());
+                          copiedBinary.setReadable(true, false);
+                          copiedBinary.setExecutable(true, false);
+                          copiedBinary.setWritable(true, false);
+                          CodePushUtils.log("Install new binary");
+                          // delete package info
+                          mUpdateManager.updateCurrentPackageInfo(new JSONObject());
+                          Intent intent = new Intent(Intent.ACTION_VIEW);
+                          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
+
+                          FileUtils.copy(binary , copiedBinary);
                             getCurrentActivity().startActivity(intent);
                         }catch (Exception e){
                             CodePushUtils.log("Error occured");
