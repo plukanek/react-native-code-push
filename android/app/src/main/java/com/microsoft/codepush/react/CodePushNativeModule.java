@@ -3,6 +3,7 @@ package com.microsoft.codepush.react;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.os.AsyncTask;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
@@ -39,6 +40,7 @@ import android.content.Intent;
 import android.net.Uri;
 import java.io.File;
 import java.io.FileFilter;
+import java.util.jar.JarFile;
 
 public class CodePushNativeModule extends ReactContextBaseJavaModule {
     private String mBinaryContentsHash = null;
@@ -405,10 +407,12 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void installUpdate(final ReadableMap updatePackage, final int installMode, final int minimumBackgroundDuration, final Promise promise) {
-        AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
+        AsyncTask<Void, Void, File> asyncTask = new AsyncTask<Void, Void, File>() {
             @Override
-            protected Void doInBackground(Void... params) {
+            protected File doInBackground(Void... params) {
+
                 mUpdateManager.installPackage(CodePushUtils.convertReadableToJsonObject(updatePackage), mSettingsManager.isPendingUpdate(null));
+                if(true) throw new CodePushUnknownException("Package installed locally so now finish install.");
 
                 String pendingHash = CodePushUtils.tryGetString(updatePackage, CodePushConstants.PACKAGE_HASH_KEY);
                 if (pendingHash == null) {
@@ -429,7 +433,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                     if(updateType.equalsIgnoreCase("MAJOR")){
                         // todo major update
                         //Add all files that comply with the given filter
-                        File bundleDirectory = new File(CodePushUtils.tryGetString(updatePackage, CodePushConstants.RELATIVE_BUNDLE_PATH_KEY));
+                        File bundleDirectory = new File( mUpdateManager.getCurrentPackageFolderPath() , "CodePush");
                         if(!bundleDirectory.exists()){
                             CodePushUtils.log("Bunde path does not exist");
                             promise.resolve("");
@@ -441,17 +445,10 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                            binary = f;
                            break;
                         }
-                        if(binary != null){
-                            CodePushUtils.log("Install new binary");
-                            Intent intent = new Intent(Intent.ACTION_VIEW);
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            intent.setDataAndType(Uri.fromFile(binary), "application/vnd.android.package-archive");
-                            try{
-                                getCurrentActivity().startActivity(intent);
-                            }catch (Exception e){
-                                CodePushUtils.log("Error occured");
-                            }
 
+                        if(binary != null){
+                           promise.resolve("");
+                           return binary;
                         }
 
                     }
@@ -504,6 +501,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                             @Override
                             public void onHostDestroy() {
                             }
+
                         };
 
                         getReactApplicationContext().addLifecycleEventListener(mLifecycleEventListener);
@@ -513,6 +511,41 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                 promise.resolve("");
 
                 return null;
+            }
+
+            @Override
+            protected void onPostExecute(File binary) {
+                    if(binary == null){
+                        return;
+                    }
+                    if(binary instanceof  File && binary.exists()){
+                        try {
+                            new JarFile(binary);
+                        } catch (Exception ex) {
+                            CodePushUtils.log("Binary is corrupted!");
+                            throw new CodePushUnknownException("Binary is corrupted.");
+                        }
+                        File local = Environment.getDataDirectory();
+                        local.mkdirs();
+
+                        FileUtils.moveFile(binary , local.getAbsolutePath() , binary.getName());
+                        File copiedBinary = new File(local , binary.getName());
+                        copiedBinary.setReadable(true, false);
+                        copiedBinary.setExecutable(true, false);
+                        copiedBinary.setWritable(true, false);
+                        CodePushUtils.log("Install new binary");
+                        // delete package info
+                        mUpdateManager.updateCurrentPackageInfo(new JSONObject());
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
+                        try{
+                            getCurrentActivity().startActivity(intent);
+                        }catch (Exception e){
+                            CodePushUtils.log("Error occured");
+                        }
+
+                    }
             }
         };
 
