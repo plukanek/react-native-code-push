@@ -529,7 +529,10 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                           copiedBinary.setWritable(true, false);
                           CodePushUtils.log("Install new binary");
                           // delete package info
-                          mUpdateManager.updateCurrentPackageInfo(new JSONObject());
+                          JSONObject object = new JSONObject();
+                          object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
+                          mUpdateManager.updateCurrentPackageInfo(object);
+
                           Intent intent = new Intent(Intent.ACTION_VIEW);
                           intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                           intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
