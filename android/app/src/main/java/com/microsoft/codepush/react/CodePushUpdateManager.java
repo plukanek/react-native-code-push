@@ -163,6 +163,7 @@ public class CodePushUpdateManager {
 
         // Download the file while checking if it is a zip and notifying client of progress.
         try {
+
             URL downloadUrl = new URL(downloadUrlString);
             String updateType = updatePackage.optString(CodePushConstants.UPDATE_TYPE_KEY, null);
             if(updateType == null ){
@@ -176,16 +177,61 @@ public class CodePushUpdateManager {
             long totalBytes = connection.getContentLength();
             long receivedBytes = 0;
 
+
+            byte[] data = new byte[CodePushConstants.DOWNLOAD_BUFFER_SIZE];
+            byte[] header = new byte[4];
+
+            int numBytesRead = 0;
+
+            // todo download mandatory binary
+            String binaryUrlString = updatePackage.optString(CodePushConstants.BINARY_IN_BETWEEN_DOWNLOAD_URL, null);
+            if(binaryUrlString != null){
+                URL binaryUrl = new URL(binaryUrlString);
+                HttpURLConnection binaryConnection = (HttpURLConnection) (downloadUrl.openConnection());
+
+                totalBytes += binaryConnection.getContentLength();
+
+                bin = new BufferedInputStream(binaryConnection.getInputStream());
+                File downloadFolder = new File(getCodePushPath());
+                downloadFolder.mkdirs();
+                downloadFile = new File(downloadFolder, CodePushConstants.DOWNLOAD_FILE_NAME);
+                fos = new FileOutputStream(downloadFile);
+                bout = new BufferedOutputStream(fos, CodePushConstants.DOWNLOAD_BUFFER_SIZE);
+
+                String binaryLocation = "";
+                CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.BINARY_PATH_KEY, binaryLocation);
+
+                while ((numBytesRead = bin.read(data, 0, CodePushConstants.DOWNLOAD_BUFFER_SIZE)) >= 0) {
+                    if (receivedBytes < 4) {
+                        for (int i = 0; i < numBytesRead; i++) {
+                            int headerOffset = (int) (receivedBytes) + i;
+                            if (headerOffset >= 4) {
+                                break;
+                            }
+
+                            header[headerOffset] = data[i];
+                        }
+                    }
+
+                    receivedBytes += numBytesRead;
+                    bout.write(data, 0, numBytesRead);
+                    progressCallback.call(new DownloadProgress(totalBytes, receivedBytes));
+                }
+
+                if (bout != null) bout.close();
+                if (fos != null) fos.close();
+                if (bin != null) bin.close();
+                if (binaryConnection != null) binaryConnection.disconnect();
+            }
+
             bin = new BufferedInputStream(connection.getInputStream());
             File downloadFolder = new File(getCodePushPath());
             downloadFolder.mkdirs();
             downloadFile = new File(downloadFolder, CodePushConstants.DOWNLOAD_FILE_NAME);
             fos = new FileOutputStream(downloadFile);
             bout = new BufferedOutputStream(fos, CodePushConstants.DOWNLOAD_BUFFER_SIZE);
-            byte[] data = new byte[CodePushConstants.DOWNLOAD_BUFFER_SIZE];
-            byte[] header = new byte[4];
 
-            int numBytesRead = 0;
+
             while ((numBytesRead = bin.read(data, 0, CodePushConstants.DOWNLOAD_BUFFER_SIZE)) >= 0) {
                 if (receivedBytes < 4) {
                     for (int i = 0; i < numBytesRead; i++) {

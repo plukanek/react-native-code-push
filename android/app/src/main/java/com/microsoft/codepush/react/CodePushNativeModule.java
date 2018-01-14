@@ -428,12 +428,14 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                     installMode == CodePushInstallMode.IMMEDIATE.getValue() ||
                     installMode == CodePushInstallMode.ON_NEXT_SUSPEND.getValue()) {
 
-                    // todo add to event chain
                     String updateType = CodePushUtils.tryGetString(updatePackage, CodePushConstants.UPDATE_TYPE_KEY);
                     if(updateType.equalsIgnoreCase("MAJOR")){
-                        // todo major update
                         //Add all files that comply with the given filter
-                        File bundleDirectory = new File( mUpdateManager.getCurrentPackageFolderPath() , "CodePush");
+                        String majorPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
+                        if(majorPath == null){
+                            majorPath =  mUpdateManager.getCurrentPackageFolderPath();
+                        }
+                        File bundleDirectory = new File( majorPath, "CodePush");
                         if(!bundleDirectory.exists()){
                             CodePushUtils.log("Bunde path does not exist");
                             promise.resolve("");
@@ -448,7 +450,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
                         if(binary != null){
                            promise.resolve("");
-                           return binary;
+                            return binary;
                         }
 
                     }
@@ -528,7 +530,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                           copiedBinary.setExecutable(true, false);
                           copiedBinary.setWritable(true, false);
                           CodePushUtils.log("Install new binary");
-                          // delete package info
+
+                          // package info changes
                           JSONObject object = new JSONObject();
                           object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
                           mUpdateManager.updateCurrentPackageInfo(object);
@@ -537,8 +540,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                           intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                           intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
 
-                          FileUtils.copy(binary , copiedBinary);
-                            getCurrentActivity().startActivity(intent);
+                          getCurrentActivity().startActivity(intent);
                         }catch (Exception e){
                             CodePushUtils.log("Error occured");
                         }
