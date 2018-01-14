@@ -295,9 +295,7 @@ public class CodePushUpdateManager {
             if (relativeBundlePath == null) {
                 relativeBundlePath = CodePushUpdateUtils.findJSBundleInUpdateContents(newUpdateFolderPath, "app-release.apk");
                 if (relativeBundlePath == null) {
-                    throw new CodePushInvalidUpdateException("Update is invalid - A APK with \"" + "app-release.apk" + "\" could not be found within the downloaded contents.");
-                }else {
-                    throw new CodePushInvalidUpdateException("Update is invalid - A JS bundle file named \"" + expectedBundleFileName + "\" could not be found within the downloaded contents. Please check that you are releasing your CodePush updates using the exact same JS bundle file name that was shipped with your app's binary.");
+                    throw new CodePushInvalidUpdateException("Update is invalid - bundle or binary file could not be found.");
                 }
             }
             if (FileUtils.fileAtPathExists(newUpdateMetadataPath)) {
