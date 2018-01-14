@@ -412,7 +412,6 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
             protected File doInBackground(Void... params) {
 
                 mUpdateManager.installPackage(CodePushUtils.convertReadableToJsonObject(updatePackage), mSettingsManager.isPendingUpdate(null));
-                if(true) throw new CodePushUnknownException("Package installed locally so now finish install.");
 
                 String pendingHash = CodePushUtils.tryGetString(updatePackage, CodePushConstants.PACKAGE_HASH_KEY);
                 if (pendingHash == null) {
@@ -533,7 +532,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
                           // package info changes
                           JSONObject object = new JSONObject();
-                          //object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
+                          object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
                           mUpdateManager.updateCurrentPackageInfo(object);
 
                           Intent intent = new Intent(Intent.ACTION_VIEW);
