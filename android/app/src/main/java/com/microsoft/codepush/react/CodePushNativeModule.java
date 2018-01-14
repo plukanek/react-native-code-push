@@ -533,7 +533,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
                           // package info changes
                           JSONObject object = new JSONObject();
-                          object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
+                          //object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
                           mUpdateManager.updateCurrentPackageInfo(object);
 
                           Intent intent = new Intent(Intent.ACTION_VIEW);
