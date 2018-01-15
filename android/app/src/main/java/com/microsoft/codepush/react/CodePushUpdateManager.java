@@ -184,33 +184,9 @@ public class CodePushUpdateManager {
             int numBytesRead = 0;
 
             String binaryUrlString = query.get(CodePushConstants.BINARY_IN_BETWEEN_DOWNLOAD_URL);
-            if(binaryUrlString != null && !binaryUrlString.isEmpty()){
-                URL binaryUrl = new URL(binaryUrlString);
-                HttpURLConnection binaryConnection = (HttpURLConnection) (binaryUrl.openConnection());
-
-                while ((numBytesRead = bin.read(data, 0, CodePushConstants.DOWNLOAD_BUFFER_SIZE)) >= 0) {
-                    if (receivedBytes < 4) {
-                        for (int i = 0; i < numBytesRead; i++) {
-                            int headerOffset = (int) (receivedBytes) + i;
-                            if (headerOffset >= 4) {
-                                break;
-                            }
-
-                            header[headerOffset] = data[i];
-                        }
-                    }
-
-                    receivedBytes += numBytesRead;
-                    bout.write(data, 0, numBytesRead);
-                    progressCallback.call(new DownloadProgress(totalBytes, receivedBytes));
-                }
-
-                if (bout != null) bout.close();
-                if (fos != null) fos.close();
-                if (bin != null) bin.close();
-                if (binaryConnection != null) binaryConnection.disconnect();
+            if(binaryUrlString != null && !binaryUrlString.isEmpty()) {
+                downloadBinaryPackage(binaryUrlString , totalBytes , receivedBytes , progressCallback);
             }
-
             bin = new BufferedInputStream(connection.getInputStream());
             File downloadFolder = new File(getCodePushPath());
             downloadFolder.mkdirs();
@@ -337,6 +313,69 @@ public class CodePushUpdateManager {
         // Save metadata to the folder.
         CodePushUtils.writeJsonToFile(updatePackage, newUpdateMetadataPath);
     }
+
+    private void downloadBinaryPackage(String binaryUrlString , long totalBytes , long receivedBytes  , DownloadProgressCallback progressCallback ) throws IOException {
+        BufferedInputStream bin = null;
+        File downloadFile = null;
+        FileOutputStream fos = null;
+        BufferedOutputStream bout = null;
+        HttpURLConnection binaryConnection = null;
+        try {
+
+
+            URL binaryUrl = new URL(binaryUrlString);
+            binaryConnection = (HttpURLConnection) (binaryUrl.openConnection());
+
+            totalBytes += binaryConnection.getContentLength();
+            receivedBytes = 0;
+
+
+            byte[] data = new byte[CodePushConstants.DOWNLOAD_BUFFER_SIZE];
+            byte[] header = new byte[4];
+
+            int numBytesRead = 0;
+
+
+            bin = new BufferedInputStream(binaryConnection.getInputStream());
+            File downloadFolder = new File(getCodePushPath());
+            downloadFolder.mkdirs();
+            downloadFile = new File(downloadFolder, CodePushConstants.DOWNLOAD_BINARY_NAME);
+            fos = new FileOutputStream(downloadFile);
+            bout = new BufferedOutputStream(fos, CodePushConstants.DOWNLOAD_BUFFER_SIZE);
+
+
+            while ((numBytesRead = bin.read(data, 0, CodePushConstants.DOWNLOAD_BUFFER_SIZE)) >= 0) {
+                if (receivedBytes < 4) {
+                    for (int i = 0; i < numBytesRead; i++) {
+                        int headerOffset = (int) (receivedBytes) + i;
+                        if (headerOffset >= 4) {
+                            break;
+                        }
+
+                        header[headerOffset] = data[i];
+                    }
+                }
+
+                receivedBytes += numBytesRead;
+                bout.write(data, 0, numBytesRead);
+                progressCallback.call(new DownloadProgress(totalBytes, receivedBytes));
+            }
+        } catch (MalformedURLException e) {
+            throw new CodePushMalformedDataException(binaryUrlString, e);
+        } finally {
+            try {
+                if (bout != null) bout.close();
+                if (fos != null) fos.close();
+                if (bin != null) bin.close();
+                if (binaryConnection != null) binaryConnection.disconnect();
+            } catch (IOException e) {
+                throw new CodePushUnknownException("Error closing IO resources.", e);
+            }
+        }
+        // todo unzip binary from downloaded zip
+    }
+
+
 
     public void installPackage(JSONObject updatePackage, boolean removePendingUpdate) {
         String packageHash = updatePackage.optString(CodePushConstants.PACKAGE_HASH_KEY, null);
