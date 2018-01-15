@@ -525,9 +525,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                           new JarFile(binary);
                           File local = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                           File copiedBinary = new File(local , binary.getName());
-                          copiedBinary.setReadable(true, false);
-                          copiedBinary.setExecutable(true, false);
-                          copiedBinary.setWritable(true, false);
+                          FileUtils.copy(binary , copiedBinary);
                           CodePushUtils.log("Install new binary");
 
                           // package info changes
@@ -537,6 +535,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
                           Intent intent = new Intent(Intent.ACTION_VIEW);
                           intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
                           intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
 
                           getCurrentActivity().startActivity(intent);

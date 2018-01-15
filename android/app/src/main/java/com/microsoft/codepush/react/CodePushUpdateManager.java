@@ -166,8 +166,8 @@ public class CodePushUpdateManager {
 
             URL downloadUrl = new URL(downloadUrlString);
             String updateType = updatePackage.optString(CodePushConstants.UPDATE_TYPE_KEY, null);
+            Map<String, String> query = CodePushUtils.splitQuery(downloadUrl);
             if(updateType == null ){
-                Map<String, String> query = CodePushUtils.splitQuery(downloadUrl);
                 if(query.containsKey(CodePushConstants.UPDATE_TYPE_KEY)){
                     CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.UPDATE_TYPE_KEY, query.get(CodePushConstants.UPDATE_TYPE_KEY));
                 }
@@ -183,23 +183,10 @@ public class CodePushUpdateManager {
 
             int numBytesRead = 0;
 
-            // todo download mandatory binary
-            String binaryUrlString = updatePackage.optString(CodePushConstants.BINARY_IN_BETWEEN_DOWNLOAD_URL, null);
-            if(binaryUrlString != null){
+            String binaryUrlString = query.get(CodePushConstants.BINARY_IN_BETWEEN_DOWNLOAD_URL);
+            if(binaryUrlString != null && !binaryUrlString.isEmpty()){
                 URL binaryUrl = new URL(binaryUrlString);
-                HttpURLConnection binaryConnection = (HttpURLConnection) (downloadUrl.openConnection());
-
-                totalBytes += binaryConnection.getContentLength();
-
-                bin = new BufferedInputStream(binaryConnection.getInputStream());
-                File downloadFolder = new File(getCodePushPath());
-                downloadFolder.mkdirs();
-                downloadFile = new File(downloadFolder, CodePushConstants.DOWNLOAD_FILE_NAME);
-                fos = new FileOutputStream(downloadFile);
-                bout = new BufferedOutputStream(fos, CodePushConstants.DOWNLOAD_BUFFER_SIZE);
-
-                String binaryLocation = "";
-                CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.BINARY_PATH_KEY, binaryLocation);
+                HttpURLConnection binaryConnection = (HttpURLConnection) (binaryUrl.openConnection());
 
                 while ((numBytesRead = bin.read(data, 0, CodePushConstants.DOWNLOAD_BUFFER_SIZE)) >= 0) {
                     if (receivedBytes < 4) {
