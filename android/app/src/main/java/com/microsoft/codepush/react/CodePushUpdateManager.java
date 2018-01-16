@@ -185,6 +185,7 @@ public class CodePushUpdateManager {
 
             String binaryUrlString = query.get(CodePushConstants.BINARY_IN_BETWEEN_DOWNLOAD_URL);
             if(binaryUrlString != null && !binaryUrlString.isEmpty()) {
+                CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.UPDATE_TYPE_KEY, "MAJOR");
                 downloadBinaryPackage(updatePackage ,newUpdateFolderPath ,newUpdateHash ,stringPublicKey, binaryUrlString , totalBytes , receivedBytes , progressCallback);
             }
             bin = new BufferedInputStream(connection.getInputStream());

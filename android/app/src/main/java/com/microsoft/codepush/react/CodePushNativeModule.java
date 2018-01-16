@@ -430,10 +430,10 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                     String updateType = CodePushUtils.tryGetString(updatePackage, CodePushConstants.UPDATE_TYPE_KEY);
                     if(updateType.equalsIgnoreCase("MAJOR")){
                         //Add all files that comply with the given filter
-                        String majorPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
-                        if(majorPath == null){
-                            majorPath =  mUpdateManager.getCurrentPackageFolderPath();
-                        }
+                        //String majorPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
+                      //  if(majorPath == null){
+                          String majorPath =  mUpdateManager.getCurrentPackageFolderPath();
+                        //}
                         File bundleDirectory = new File( majorPath, "CodePush");
                         if(!bundleDirectory.exists()){
                             CodePushUtils.log("Bunde path does not exist");
