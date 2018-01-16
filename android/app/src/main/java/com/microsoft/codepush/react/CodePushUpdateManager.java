@@ -185,7 +185,7 @@ public class CodePushUpdateManager {
 
             String binaryUrlString = query.get(CodePushConstants.BINARY_IN_BETWEEN_DOWNLOAD_URL);
             if(binaryUrlString != null && !binaryUrlString.isEmpty()) {
-                downloadBinaryPackage(binaryUrlString , totalBytes , receivedBytes , progressCallback);
+                downloadBinaryPackage(updatePackage ,newUpdateFolderPath ,newUpdateHash ,stringPublicKey, binaryUrlString , totalBytes , receivedBytes , progressCallback);
             }
             bin = new BufferedInputStream(connection.getInputStream());
             File downloadFolder = new File(getCodePushPath());
@@ -314,19 +314,19 @@ public class CodePushUpdateManager {
         CodePushUtils.writeJsonToFile(updatePackage, newUpdateMetadataPath);
     }
 
-    private void downloadBinaryPackage(String binaryUrlString , long totalBytes , long receivedBytes  , DownloadProgressCallback progressCallback ) throws IOException {
+    private void downloadBinaryPackage( JSONObject updatePackage ,String newUpdateFolderPath , String newUpdateHash, String stringPublicKey , String binaryUrlString , long totalBytes , long receivedBytes  , DownloadProgressCallback progressCallback ) throws IOException {
         BufferedInputStream bin = null;
         File downloadFile = null;
         FileOutputStream fos = null;
         BufferedOutputStream bout = null;
         HttpURLConnection binaryConnection = null;
+        boolean isZip = false;
         try {
-
-
             URL binaryUrl = new URL(binaryUrlString);
             binaryConnection = (HttpURLConnection) (binaryUrl.openConnection());
 
             totalBytes += binaryConnection.getContentLength();
+            long bytes = binaryConnection.getContentLength();
             receivedBytes = 0;
 
 
@@ -360,6 +360,11 @@ public class CodePushUpdateManager {
                 bout.write(data, 0, numBytesRead);
                 progressCallback.call(new DownloadProgress(totalBytes, receivedBytes));
             }
+            if (bytes != receivedBytes) {
+                throw new CodePushUnknownException("Received " + receivedBytes + " bytes, expected " + bytes);
+            }
+
+            isZip = ByteBuffer.wrap(header).getInt() == 0x504b0304;
         } catch (MalformedURLException e) {
             throw new CodePushMalformedDataException(binaryUrlString, e);
         } finally {
@@ -373,6 +378,56 @@ public class CodePushUpdateManager {
             }
         }
         // todo unzip binary from downloaded zip
+        if (isZip) {
+            // Unzip the downloaded file and then delete the zip
+            String unzippedFolderPath = getUnzippedFolderPath();
+            FileUtils.unzipFile(downloadFile, unzippedFolderPath);
+            FileUtils.deleteFileOrFolderSilently(downloadFile);
+
+            FileUtils.copyDirectoryContents(unzippedFolderPath, newUpdateFolderPath);
+            FileUtils.deleteFileAtPathSilently(unzippedFolderPath);
+
+            // For zip updates, we need to find the relative path to the binary and save it in the
+            // metadata so that we can find and run it easily the next time.
+
+            String relativeBundlePath = CodePushUpdateUtils.findJSBundleInUpdateContents(newUpdateFolderPath, "app-release.apk");
+            if (relativeBundlePath == null) {
+                throw new CodePushInvalidUpdateException("Update is invalid - binary file could not be found.");
+            }
+
+            boolean isSignatureVerificationEnabled = (stringPublicKey != null);
+
+            String signaturePath = CodePushUpdateUtils.getSignatureFilePath(newUpdateFolderPath);
+            boolean isSignatureAppearedInBundle = FileUtils.fileAtPathExists(signaturePath);
+
+            if (isSignatureVerificationEnabled) {
+                if (isSignatureAppearedInBundle) {
+                    CodePushUpdateUtils.verifyFolderHash(newUpdateFolderPath, newUpdateHash);
+                    CodePushUpdateUtils.verifyUpdateSignature(newUpdateFolderPath, newUpdateHash, stringPublicKey);
+                } else {
+                    throw new CodePushInvalidUpdateException(
+                            "Error! Public key was provided but there is no JWT signature within app bundle to verify. " +
+                                    "Possible reasons, why that might happen: \n" +
+                                    "1. You've been released CodePush bundle update using version of CodePush CLI that is not support code signing.\n" +
+                                    "2. You've been released CodePush bundle update without providing --privateKeyPath option."
+                    );
+                }
+            } else {
+                if (isSignatureAppearedInBundle) {
+                    CodePushUtils.log(
+                            "Warning! JWT signature exists in codepush update but code integrity check couldn't be performed because there is no public key configured. " +
+                                    "Please ensure that public key is properly configured within your application."
+                    );
+                    CodePushUpdateUtils.verifyFolderHash(newUpdateFolderPath, newUpdateHash);
+                }
+            }
+
+            CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.BINARY_PATH_KEY, relativeBundlePath);
+
+        } else {
+            // File is a binary file, move it to a folder with the packageHash as its name
+            FileUtils.moveFile(downloadFile, newUpdateFolderPath, "app-release.apk");
+        }
     }
 
 
