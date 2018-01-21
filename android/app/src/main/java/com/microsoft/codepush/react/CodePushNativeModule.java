@@ -38,6 +38,7 @@ import java.util.Map;
 
 import android.content.Intent;
 import android.net.Uri;
+
 import java.io.File;
 import java.io.FileFilter;
 import java.util.jar.JarFile;
@@ -173,7 +174,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
     private void resetReactRootViews(ReactInstanceManager instanceManager) throws NoSuchFieldException, IllegalAccessException {
         Field mAttachedRootViewsField = instanceManager.getClass().getDeclaredField("mAttachedRootViews");
         mAttachedRootViewsField.setAccessible(true);
-        List<ReactRootView> mAttachedRootViews = (List<ReactRootView>)mAttachedRootViewsField.get(instanceManager);
+        List<ReactRootView> mAttachedRootViews = (List<ReactRootView>) mAttachedRootViewsField.get(instanceManager);
         for (ReactRootView reactRootView : mAttachedRootViews) {
             reactRootView.removeAllViews();
             reactRootView.setId(View.NO_ID);
@@ -281,7 +282,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void getConfiguration(Promise promise) {
-        WritableMap configMap =  Arguments.createMap();
+        WritableMap configMap = Arguments.createMap();
         configMap.putString("appVersion", mCodePush.getAppVersion());
         configMap.putString("clientUniqueId", mClientUniqueId);
         configMap.putString("deploymentKey", mCodePush.getDeploymentKey());
@@ -421,34 +422,34 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                 }
 
                 if (installMode == CodePushInstallMode.ON_NEXT_RESUME.getValue() ||
-                    // We also add the resume listener if the installMode is IMMEDIATE, because
-                    // if the current activity is backgrounded, we want to reload the bundle when
-                    // it comes back into the foreground.
-                    installMode == CodePushInstallMode.IMMEDIATE.getValue() ||
-                    installMode == CodePushInstallMode.ON_NEXT_SUSPEND.getValue()) {
+                        // We also add the resume listener if the installMode is IMMEDIATE, because
+                        // if the current activity is backgrounded, we want to reload the bundle when
+                        // it comes back into the foreground.
+                        installMode == CodePushInstallMode.IMMEDIATE.getValue() ||
+                        installMode == CodePushInstallMode.ON_NEXT_SUSPEND.getValue()) {
 
-                    String updateType = CodePushUtils.tryGetString(updatePackage, CodePushConstants.UPDATE_TYPE_KEY);
-                    if(updateType.equalsIgnoreCase("MAJOR")){
+                    String binaryPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
+                    if (binaryPath != null) {
                         //Add all files that comply with the given filter
                         //String majorPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
-                      //  if(majorPath == null){
-                          String majorPath =  mUpdateManager.getCurrentPackageFolderPath();
+                        //  if(majorPath == null){
+                        String majorPath = mUpdateManager.getCurrentPackageFolderPath();
                         //}
-                        File bundleDirectory = new File( majorPath, "CodePush");
-                        if(!bundleDirectory.exists()){
+                        File bundleDirectory = new File(majorPath, "CodePush");
+                        if (!bundleDirectory.exists()) {
                             CodePushUtils.log("Bunde path does not exist");
                             promise.resolve("");
                             return null;
                         }
                         File[] files = bundleDirectory.listFiles(new APKFileFilter());
                         File binary = null;
-                        for( File f : files) {
-                           binary = f;
-                           break;
+                        for (File f : files) {
+                            binary = f;
+                            break;
                         }
 
-                        if(binary != null){
-                           promise.resolve("");
+                        if (binary != null) {
+                            promise.resolve("");
                             return binary;
                         }
 
@@ -516,34 +517,37 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
             @Override
             protected void onPostExecute(File binary) {
-                    if(binary == null){
-                        return;
+                if (binary == null) {
+                    return;
+                }
+                if (binary instanceof File && binary.exists()) {
+
+                    try {
+                        new JarFile(binary);
+                        File local = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                        File copiedBinary = new File(local, binary.getName());
+                        FileUtils.copy(binary, copiedBinary);
+                        CodePushUtils.log("Install new binary");
+
+                        // package info changes
+                        // JSONObject object = new JSONObject();
+                        // object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
+                        // mUpdateManager.updateCurrentPackageInfo(object);
+
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
+
+                        getCurrentActivity().startActivity(intent);
+                        getCurrentActivity().finish();
+
+                    } catch (Exception e) {
+                        CodePushUtils.log("Error occured");
                     }
-                    if(binary instanceof  File && binary.exists()){
 
-                      try{
-                          new JarFile(binary);
-                          File local = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                          File copiedBinary = new File(local , binary.getName());
-                          FileUtils.copy(binary , copiedBinary);
-                          CodePushUtils.log("Install new binary");
-
-                          // package info changes
-                          JSONObject object = new JSONObject();
-                          object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
-                          mUpdateManager.updateCurrentPackageInfo(object);
-
-                          Intent intent = new Intent(Intent.ACTION_VIEW);
-                          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                          intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                          intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
-
-                          getCurrentActivity().startActivity(intent);
-                        }catch (Exception e){
-                            CodePushUtils.log("Error occured");
-                        }
-
-                    }
+                }
             }
         };
 
@@ -612,7 +616,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
         @Override
         public boolean accept(File pathname) {
             String suffix = ".apk";
-            if( pathname.getName().toLowerCase().endsWith(suffix) ) {
+            if (pathname.getName().toLowerCase().endsWith(suffix)) {
                 return true;
             }
             return false;

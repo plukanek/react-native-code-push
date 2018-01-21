@@ -102,7 +102,7 @@ public class CodePush implements ReactPackage {
         mServerUrl = serverUrl;
     }
 
-    private String getPublicKeyByResourceDescriptor(int publicKeyResourceDescriptor){
+    private String getPublicKeyByResourceDescriptor(int publicKeyResourceDescriptor) {
         String publicKey;
         try {
             publicKey = mContext.getString(publicKeyResourceDescriptor);
@@ -152,7 +152,7 @@ public class CodePush implements ReactPackage {
             int codePushApkBuildTimeId = this.mContext.getResources().getIdentifier(CodePushConstants.CODE_PUSH_APK_BUILD_TIME_KEY, "string", packageName);
             // replace double quotes needed for correct restoration of long value from strings.xml
             // https://github.com/Microsoft/cordova-plugin-code-push/issues/264
-            String codePushApkBuildTime = this.mContext.getResources().getString(codePushApkBuildTimeId).replaceAll("\"","");
+            String codePushApkBuildTime = this.mContext.getResources().getString(codePushApkBuildTimeId).replaceAll("\"", "");
             return Long.parseLong(codePushApkBuildTime);
         } catch (Exception e) {
             throw new CodePushUnknownException("Error in getting binary resources modified time", e);
@@ -231,7 +231,7 @@ public class CodePush implements ReactPackage {
         JSONObject pendingUpdate = mSettingsManager.getPendingUpdate();
         if (pendingUpdate != null) {
             JSONObject packageMetadata = this.mUpdateManager.getCurrentPackage();
-            if (packageMetadata == null || !isPackageBundleLatest(packageMetadata) && hasBinaryVersionChanged(packageMetadata)) {
+            if (packageMetadata == null || !isPackageBundleLatest(packageMetadata) && hasBinaryVersionChanged(packageMetadata) || isMajorUpdate(packageMetadata)) {
                 CodePushUtils.log("Skipping initializeUpdateAfterRestart(), binary version is newer");
                 return;
             }
@@ -293,6 +293,11 @@ public class CodePush implements ReactPackage {
     private boolean hasBinaryVersionChanged(JSONObject packageMetadata) {
         String packageAppVersion = packageMetadata.optString("appVersion", null);
         return !sAppVersion.equals(packageAppVersion);
+    }
+
+    private boolean isMajorUpdate(JSONObject packageMetadata) {
+        String binary = packageMetadata.optString(CodePushConstants.BINARY_PATH_KEY, null);
+        return binary != null;
     }
 
     boolean needToReportRollback() {

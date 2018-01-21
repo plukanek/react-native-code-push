@@ -90,6 +90,10 @@ public class CodePushUpdateManager {
         if (currentPackage == null) {
             return null;
         }
+        String updateType = currentPackage.optString(CodePushConstants.UPDATE_TYPE_KEY, null);
+        if (updateType != null && updateType.equalsIgnoreCase("Major")) {
+            return CodePushConstants.ASSETS_BUNDLE_PREFIX + bundleFileName;
+        }
 
         String relativeBundlePath = currentPackage.optString(CodePushConstants.RELATIVE_BUNDLE_PATH_KEY, null);
         if (relativeBundlePath == null) {
@@ -167,8 +171,8 @@ public class CodePushUpdateManager {
             URL downloadUrl = new URL(downloadUrlString);
             String updateType = updatePackage.optString(CodePushConstants.UPDATE_TYPE_KEY, null);
             Map<String, String> query = CodePushUtils.splitQuery(downloadUrl);
-            if(updateType == null ){
-                if(query.containsKey(CodePushConstants.UPDATE_TYPE_KEY)){
+            if (updateType == null) {
+                if (query.containsKey(CodePushConstants.UPDATE_TYPE_KEY)) {
                     CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.UPDATE_TYPE_KEY, query.get(CodePushConstants.UPDATE_TYPE_KEY));
                 }
             }
@@ -184,9 +188,9 @@ public class CodePushUpdateManager {
             int numBytesRead = 0;
 
             String binaryUrlString = query.get(CodePushConstants.BINARY_IN_BETWEEN_DOWNLOAD_URL);
-            if(binaryUrlString != null && !binaryUrlString.isEmpty()) {
-                CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.UPDATE_TYPE_KEY, "MAJOR");
-                downloadBinaryPackage(updatePackage ,newUpdateFolderPath ,newUpdateHash ,stringPublicKey, binaryUrlString , totalBytes , receivedBytes , progressCallback);
+            if (binaryUrlString != null && !binaryUrlString.isEmpty()) {
+                //CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.UPDATE_TYPE_KEY, "MAJOR");
+                downloadBinaryPackage(updatePackage, newUpdateFolderPath, newUpdateHash, stringPublicKey, binaryUrlString, totalBytes, receivedBytes, progressCallback);
             }
             bin = new BufferedInputStream(connection.getInputStream());
             File downloadFolder = new File(getCodePushPath());
@@ -285,16 +289,16 @@ public class CodePushUpdateManager {
                 } else {
                     throw new CodePushInvalidUpdateException(
                             "Error! Public key was provided but there is no JWT signature within app bundle to verify. " +
-                            "Possible reasons, why that might happen: \n" +
-                            "1. You've been released CodePush bundle update using version of CodePush CLI that is not support code signing.\n" +
-                            "2. You've been released CodePush bundle update without providing --privateKeyPath option."
+                                    "Possible reasons, why that might happen: \n" +
+                                    "1. You've been released CodePush bundle update using version of CodePush CLI that is not support code signing.\n" +
+                                    "2. You've been released CodePush bundle update without providing --privateKeyPath option."
                     );
                 }
             } else {
                 if (isSignatureAppearedInBundle) {
                     CodePushUtils.log(
                             "Warning! JWT signature exists in codepush update but code integrity check couldn't be performed because there is no public key configured. " +
-                            "Please ensure that public key is properly configured within your application."
+                                    "Please ensure that public key is properly configured within your application."
                     );
                     CodePushUpdateUtils.verifyFolderHash(newUpdateFolderPath, newUpdateHash);
                 } else {
@@ -303,8 +307,12 @@ public class CodePushUpdateManager {
                     }
                 }
             }
-
-            CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.RELATIVE_BUNDLE_PATH_KEY, relativeBundlePath);
+            String updateType = updatePackage.optString(CodePushConstants.UPDATE_TYPE_KEY, null);
+            if ("Major".equalsIgnoreCase(updateType)) {
+                CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.BINARY_PATH_KEY, relativeBundlePath);
+            } else {
+                CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.RELATIVE_BUNDLE_PATH_KEY, relativeBundlePath);
+            }
 
         } else {
             // File is a jsbundle, move it to a folder with the packageHash as its name
@@ -315,7 +323,7 @@ public class CodePushUpdateManager {
         CodePushUtils.writeJsonToFile(updatePackage, newUpdateMetadataPath);
     }
 
-    private void downloadBinaryPackage( JSONObject updatePackage ,String newUpdateFolderPath , String newUpdateHash, String stringPublicKey , String binaryUrlString , long totalBytes , long receivedBytes  , DownloadProgressCallback progressCallback ) throws IOException {
+    private void downloadBinaryPackage(JSONObject updatePackage, String newUpdateFolderPath, String newUpdateHash, String stringPublicKey, String binaryUrlString, long totalBytes, long receivedBytes, DownloadProgressCallback progressCallback) throws IOException {
         BufferedInputStream bin = null;
         File downloadFile = null;
         FileOutputStream fos = null;
@@ -430,7 +438,6 @@ public class CodePushUpdateManager {
             FileUtils.moveFile(downloadFile, newUpdateFolderPath, "app-release.apk");
         }
     }
-
 
 
     public void installPackage(JSONObject updatePackage, boolean removePendingUpdate) {
