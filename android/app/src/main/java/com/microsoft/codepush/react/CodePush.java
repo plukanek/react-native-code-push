@@ -203,10 +203,19 @@ public class CodePush implements ReactPackage {
 
         JSONObject packageMetadata = this.mUpdateManager.getCurrentPackage();
         if (isPackageBundleLatest(packageMetadata)) {
+            CodePushUtils.log("isLatest:" + packageMetadata.toString());
             CodePushUtils.logBundleUrl(packageFilePath);
             sIsRunningBinaryVersion = false;
             return packageFilePath;
         } else {
+
+            if(isMajorUpdate(packageMetadata)){
+                mDidUpdate = true;
+                CodePushUtils.logBundleUrl(packageFilePath);
+                sIsRunningBinaryVersion = false;
+                return packageFilePath;
+            }
+            CodePushUtils.log("not latest binary version update false:" + packageMetadata.toString());
             // The binary version is newer.
             this.mDidUpdate = false;
             if (!this.mIsDebugMode || hasBinaryVersionChanged(packageMetadata)) {
@@ -231,12 +240,22 @@ public class CodePush implements ReactPackage {
         JSONObject pendingUpdate = mSettingsManager.getPendingUpdate();
         if (pendingUpdate != null) {
             JSONObject packageMetadata = this.mUpdateManager.getCurrentPackage();
-            if (packageMetadata == null || !isPackageBundleLatest(packageMetadata) && hasBinaryVersionChanged(packageMetadata) || isMajorUpdate(packageMetadata)) {
+            if (packageMetadata == null || !isPackageBundleLatest(packageMetadata) && hasBinaryVersionChanged(packageMetadata)) {
                 CodePushUtils.log("Skipping initializeUpdateAfterRestart(), binary version is newer");
                 return;
             }
 
             try {
+                if(isMajorUpdate(packageMetadata)){
+                    mDidUpdate = true;
+                    CodePushUtils.log("Update was major update:current:" + packageMetadata.toString() + "| pending:" + pendingUpdate.toString());
+
+                    // Mark that we tried to initialize the new update, so that if it crashes,
+                    // we will know that we need to rollback when the app next starts.
+                    mSettingsManager.savePendingUpdate(pendingUpdate.getString(CodePushConstants.PENDING_UPDATE_HASH_KEY),
+                            /* isLoading */true);
+                    return;
+                }
                 boolean updateIsLoading = pendingUpdate.getBoolean(CodePushConstants.PENDING_UPDATE_IS_LOADING_KEY);
                 if (updateIsLoading) {
                     // Pending update was initialized, but notifyApplicationReady was not called.

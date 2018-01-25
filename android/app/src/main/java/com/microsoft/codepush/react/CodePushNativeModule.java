@@ -302,11 +302,14 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
             @Override
             protected Void doInBackground(Void... params) {
                 JSONObject currentPackage = mUpdateManager.getCurrentPackage();
-
                 if (currentPackage == null) {
+
+                    CodePushUtils.log("getUpdateMetadata is null for updateState:"  + updateState );
                     promise.resolve(null);
                     return null;
                 }
+                mUpdateManager.
+                CodePushUtils.log("getUpdateMetadata:" + currentPackage.toString() + " state:" + updateState);
 
                 Boolean currentUpdateIsPending = false;
 
@@ -533,7 +536,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                         // JSONObject object = new JSONObject();
                         // object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
                         // mUpdateManager.updateCurrentPackageInfo(object);
-
+                        CodePushUtils.log(mUpdateManager.getCurrentPackage().toString());
                         Intent intent = new Intent(Intent.ACTION_VIEW);
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -541,6 +544,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                         intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
 
                         getCurrentActivity().startActivity(intent);
+
+                        CodePushUtils.log(((mUpdateManager.getCurrentPackage() != null)? mUpdateManager.getCurrentPackage().toString() : "No current package"));
                         getCurrentActivity().finish();
 
                     } catch (Exception e) {
