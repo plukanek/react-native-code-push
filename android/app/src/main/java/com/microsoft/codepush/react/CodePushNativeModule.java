@@ -308,7 +308,6 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                     promise.resolve(null);
                     return null;
                 }
-                mUpdateManager.
                 CodePushUtils.log("getUpdateMetadata:" + currentPackage.toString() + " state:" + updateState);
 
                 Boolean currentUpdateIsPending = false;
