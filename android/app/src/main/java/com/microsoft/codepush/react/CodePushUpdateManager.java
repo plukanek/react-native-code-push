@@ -468,10 +468,16 @@ public class CodePushUpdateManager {
         updateCurrentPackageInfo(info);
     }
 
-    public void rollbackPackage() {
+    public void rollbackPackage(){
+        rollbackPackage(true);
+    }
+
+    public void rollbackPackage(boolean delete) {
         JSONObject info = getCurrentPackageInfo();
         String currentPackageFolderPath = getCurrentPackageFolderPath();
-        FileUtils.deleteDirectoryAtPath(currentPackageFolderPath);
+        if(delete){
+            FileUtils.deleteDirectoryAtPath(currentPackageFolderPath);
+        }
         CodePushUtils.setJSONValueForKey(info, CodePushConstants.CURRENT_PACKAGE_KEY, info.optString(CodePushConstants.PREVIOUS_PACKAGE_KEY, null));
         CodePushUtils.setJSONValueForKey(info, CodePushConstants.PREVIOUS_PACKAGE_KEY, null);
         updateCurrentPackageInfo(info);

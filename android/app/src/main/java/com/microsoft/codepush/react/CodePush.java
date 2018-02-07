@@ -23,7 +23,7 @@ import java.util.List;
 
 public class CodePush implements ReactPackage {
 
-    private static boolean sIsRunningBinaryVersion = false;
+    public static boolean sIsRunningBinaryVersion = false;
     private static boolean sNeedToReportRollback = false;
     private static boolean sTestConfigurationFlag = false;
     private static String sAppVersion = null;
@@ -189,6 +189,36 @@ public class CodePush implements ReactPackage {
         return mCurrentInstance.getJSBundleFileInternal(assetsBundleFileName);
     }
 
+    public static void finishMajorUpdate() {
+        if (mCurrentInstance == null) {
+            throw new CodePushNotInitializedException("A CodePush instance has not been created yet. Have you added it to your app's list of ReactPackages?");
+        }
+        mCurrentInstance.finishMajorUpdateInternal();
+    }
+
+    public void setPending(){
+        mSettingsManager.savePendingUpdate(mUpdateManager.getCurrentPackageHash() ,true);
+    }
+
+    public void finishMajorUpdateInternal(){
+        // finish major update
+        try {
+            CodePushUtils.log("finish major install");
+            String pendingHash = mSettingsManager.getPendingUpdate().getString(CodePushConstants.PENDING_UPDATE_HASH_KEY);
+            mUpdateManager.installPackage(mSettingsManager.getPendingUpdate() ,  mSettingsManager.isPendingUpdate(null) );
+            if (pendingHash == null) {
+                throw new CodePushUnknownException("Update package to be installed has no hash.");
+            } else {
+                mSettingsManager.savePendingUpdate(pendingHash, /* isLoading */false);
+            }
+            mDidUpdate = true;
+            sIsRunningBinaryVersion = false;
+        }catch (JSONException e){
+            CodePushUtils.log("error finishing update:" + e.getMessage());
+        }
+
+    }
+
     public String getJSBundleFileInternal(String assetsBundleFileName) {
         this.mAssetsBundleFileName = assetsBundleFileName;
         String binaryJsBundleUrl = CodePushConstants.ASSETS_BUNDLE_PREFIX + assetsBundleFileName;
@@ -203,16 +233,23 @@ public class CodePush implements ReactPackage {
 
         JSONObject packageMetadata = this.mUpdateManager.getCurrentPackage();
         if (isPackageBundleLatest(packageMetadata)) {
-            CodePushUtils.log("isLatest:" + packageMetadata.toString());
-            CodePushUtils.logBundleUrl(packageFilePath);
-            sIsRunningBinaryVersion = false;
-            return packageFilePath;
+            File file = new File(packageFilePath);
+            if(file.exists()){
+                CodePushUtils.log("isLatest:" + packageMetadata.toString());
+                CodePushUtils.logBundleUrl(packageFilePath);
+                sIsRunningBinaryVersion = false;
+                return packageFilePath;
+            }else{
+                CodePushUtils.log("jsbundle file does not exist:" + packageMetadata.toString());
+                CodePushUtils.logBundleUrl(binaryJsBundleUrl);
+                sIsRunningBinaryVersion = true;
+                return binaryJsBundleUrl;
+            }
         } else {
 
             if(isMajorUpdate(packageMetadata)){
-                mDidUpdate = true;
-                CodePushUtils.logBundleUrl(packageFilePath);
                 sIsRunningBinaryVersion = false;
+                CodePushUtils.logBundleUrl(packageFilePath);
                 return packageFilePath;
             }
             CodePushUtils.log("not latest binary version update false:" + packageMetadata.toString());
@@ -242,6 +279,10 @@ public class CodePush implements ReactPackage {
             JSONObject packageMetadata = this.mUpdateManager.getCurrentPackage();
             if (packageMetadata == null || !isPackageBundleLatest(packageMetadata) && hasBinaryVersionChanged(packageMetadata)) {
                 CodePushUtils.log("Skipping initializeUpdateAfterRestart(), binary version is newer");
+                if(packageMetadata != null && isMajorUpdate(packageMetadata)){
+                    mDidUpdate = true;
+                    sIsRunningBinaryVersion = false;
+                }
                 return;
             }
 
@@ -252,8 +293,8 @@ public class CodePush implements ReactPackage {
 
                     // Mark that we tried to initialize the new update, so that if it crashes,
                     // we will know that we need to rollback when the app next starts.
-                    mSettingsManager.savePendingUpdate(pendingUpdate.getString(CodePushConstants.PENDING_UPDATE_HASH_KEY),
-                            /* isLoading */true);
+                    //mSettingsManager.savePendingUpdate(pendingUpdate.getString(CodePushConstants.PENDING_UPDATE_HASH_KEY),
+                    //        /* isLoading */true);
                     return;
                 }
                 boolean updateIsLoading = pendingUpdate.getBoolean(CodePushConstants.PENDING_UPDATE_IS_LOADING_KEY);
