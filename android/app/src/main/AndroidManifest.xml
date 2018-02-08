@@ -5,6 +5,16 @@
 
     <application>
         <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
+        <receiver
+            android:name="com.microsoft.codepush.react.PackageReceiver"
+            android:enabled="true"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_REPLACED" />
+               <!-- <action android:name="android.intent.action.PACKAGE_REPLACED" /> -->
+                <data android:scheme="package"/>
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

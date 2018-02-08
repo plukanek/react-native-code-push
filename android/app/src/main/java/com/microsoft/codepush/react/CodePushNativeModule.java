@@ -2,6 +2,9 @@ package com.microsoft.codepush.react;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.Handler;
@@ -414,9 +417,37 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
             @Override
             protected File doInBackground(Void... params) {
 
-                mUpdateManager.installPackage(CodePushUtils.convertReadableToJsonObject(updatePackage), mSettingsManager.isPendingUpdate(null));
-
+                // install on package receiver
                 String pendingHash = CodePushUtils.tryGetString(updatePackage, CodePushConstants.PACKAGE_HASH_KEY);
+
+                String binaryPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
+                if (binaryPath != null && !binaryPath.isEmpty()) {
+                    String majorPath = mUpdateManager.getPackageFolderPath(pendingHash);
+                    mSettingsManager.savePendingUpdate(pendingHash ,true);
+                    //}
+                    File bundleDirectory = new File(majorPath, "CodePush");
+                    if (!bundleDirectory.exists()) {
+                        CodePushUtils.log("Bunde path does not exist");
+                        promise.resolve("");
+                        return null;
+                    }
+                    File[] files = bundleDirectory.listFiles(new APKFileFilter());
+                    File binary = null;
+                    for (File f : files) {
+                        binary = f;
+                        break;
+                    }
+
+                    if (binary != null) {
+                        promise.resolve("");
+                        return binary;
+                    }
+
+                }
+
+
+                // only on minor
+                mUpdateManager.installPackage(CodePushUtils.convertReadableToJsonObject(updatePackage), mSettingsManager.isPendingUpdate(null));
                 if (pendingHash == null) {
                     throw new CodePushUnknownException("Update package to be installed has no hash.");
                 } else {
@@ -429,34 +460,6 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                         // it comes back into the foreground.
                         installMode == CodePushInstallMode.IMMEDIATE.getValue() ||
                         installMode == CodePushInstallMode.ON_NEXT_SUSPEND.getValue()) {
-
-                    String binaryPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
-                    if (binaryPath != null) {
-                        //Add all files that comply with the given filter
-                        //String majorPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
-                        //  if(majorPath == null){
-                        String majorPath = mUpdateManager.getCurrentPackageFolderPath();
-                        //}
-                        File bundleDirectory = new File(majorPath, "CodePush");
-                        if (!bundleDirectory.exists()) {
-                            CodePushUtils.log("Bunde path does not exist");
-                            promise.resolve("");
-                            return null;
-                        }
-                        File[] files = bundleDirectory.listFiles(new APKFileFilter());
-                        File binary = null;
-                        for (File f : files) {
-                            binary = f;
-                            break;
-                        }
-
-                        if (binary != null) {
-                            promise.resolve("");
-                            return binary;
-                        }
-
-                    }
-
 
                     // Store the minimum duration on the native module as an instance
                     // variable instead of relying on a closure below, so that any
@@ -531,11 +534,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                         FileUtils.copy(binary, copiedBinary);
                         CodePushUtils.log("Install new binary");
 
-                        // package info changes
-                        // JSONObject object = new JSONObject();
-                        // object.put(CodePushConstants.CURRENT_PACKAGE_KEY , mUpdateManager.getCurrentPackageHash());
-                        // mUpdateManager.updateCurrentPackageInfo(object);
-                        CodePushUtils.log(mUpdateManager.getCurrentPackage().toString());
+                       // package info changes
                         Intent intent = new Intent(Intent.ACTION_VIEW);
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -543,10 +542,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                         intent.setDataAndType(Uri.fromFile(copiedBinary), "application/vnd.android.package-archive");
 
                         getCurrentActivity().startActivity(intent);
-
-                        CodePushUtils.log(((mUpdateManager.getCurrentPackage() != null)? mUpdateManager.getCurrentPackage().toString() : "No current package"));
                         getCurrentActivity().finish();
-
+                        CodePushUtils.log(((mUpdateManager.getCurrentPackage() != null)? mUpdateManager.getCurrentPackage().toString() : "No current package"));
                     } catch (Exception e) {
                         CodePushUtils.log("Error occured");
                     }
@@ -556,6 +553,18 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
         };
 
         asyncTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    public static class PackageReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if( !context.getPackageName().equals(intent.getData().getSchemeSpecificPart())) {
+                CodePushUtils.log("other package was upgraded");
+                return;
+            }
+            CodePush.finishMajorUpdate();
+        }
     }
 
     @ReactMethod
