@@ -421,7 +421,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                 String pendingHash = CodePushUtils.tryGetString(updatePackage, CodePushConstants.PACKAGE_HASH_KEY);
 
                 String binaryPath = CodePushUtils.tryGetString(updatePackage, CodePushConstants.BINARY_PATH_KEY);
-                if (binaryPath != null) {
+                if (binaryPath != null && !binaryPath.isEmpty()) {
                     String majorPath = mUpdateManager.getPackageFolderPath(pendingHash);
                     mSettingsManager.savePendingUpdate(pendingHash ,true);
                     //}

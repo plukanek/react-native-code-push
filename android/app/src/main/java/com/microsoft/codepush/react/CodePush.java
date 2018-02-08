@@ -250,7 +250,14 @@ public class CodePush implements ReactPackage {
             if(isMajorUpdate(packageMetadata)){
                 sIsRunningBinaryVersion = false;
                 CodePushUtils.logBundleUrl(packageFilePath);
-                return packageFilePath;
+                File file = new File(packageFilePath);
+                if(file.exists()){
+                    return packageFilePath;
+                }else{
+                    CodePushUtils.log("jsbundle file does not exist:" + packageMetadata.toString());
+                    CodePushUtils.logBundleUrl(binaryJsBundleUrl);
+                    return binaryJsBundleUrl;
+                }
             }
             CodePushUtils.log("not latest binary version update false:" + packageMetadata.toString());
             // The binary version is newer.
@@ -287,14 +294,13 @@ public class CodePush implements ReactPackage {
             }
 
             try {
-                if(isMajorUpdate(packageMetadata)){
+                CodePushUtils.log("initialize after restart metadata package:" + packageMetadata.toString());
+                // get pending update meta:
+                String pendingHash = pendingUpdate.getString(CodePushConstants.PENDING_UPDATE_HASH_KEY);
+                JSONObject pendingMeta =  mUpdateManager.getPackage(pendingHash);
+               if(pendingMeta != null && isMajorUpdate(pendingMeta)){
                     mDidUpdate = true;
                     CodePushUtils.log("Update was major update:current:" + packageMetadata.toString() + "| pending:" + pendingUpdate.toString());
-
-                    // Mark that we tried to initialize the new update, so that if it crashes,
-                    // we will know that we need to rollback when the app next starts.
-                    //mSettingsManager.savePendingUpdate(pendingUpdate.getString(CodePushConstants.PENDING_UPDATE_HASH_KEY),
-                    //        /* isLoading */true);
                     return;
                 }
                 boolean updateIsLoading = pendingUpdate.getBoolean(CodePushConstants.PENDING_UPDATE_IS_LOADING_KEY);
